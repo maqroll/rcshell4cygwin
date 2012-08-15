@@ -190,7 +190,7 @@ PROTOTYPE(void tty_cr, (void));
 #define KEY_VREPRINT		270 /* tty's reprint key */
 #define KEY_VSUSP		271 /* tty's suspend key */
 
-#define KEY_VINTR		272 /* tty's interrupt key */
+#define KEY_VINTR		3 /* tty's interrupt key */
 #define KEY_VQUIT		273 /* tty's quit key */
 
 /* Actual symbols vrl can handle, i.e. syms that sym_get() may return */

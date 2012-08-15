@@ -67,7 +67,8 @@ wildexp_t *we;
     path = malloc(utl_maxpathlen() + 1);
 
     /* Alloc buffer for expanded expression */
-    expr = malloc(utl_maxpathlen() + 1);
+    //expr = malloc(utl_maxpathlen() + 1);
+    expr=wildcard; // LOC : equivalente a var_expand
 
     if (wep->nambuf == NULL || path == NULL || expr == NULL)
     {
@@ -84,12 +85,14 @@ wildexp_t *we;
      * requested, we still need to copy the string since it will be
      * modified.
      */
-    var_expand(wildcard, expr);
+     // LOC: prescindimos de esta funcionalidad
+    //var_expand(wildcard, expr);
 
     (void) strcpy(path, "");
     recurse(path, expr, wep);
 
-    (void) free(expr);
+    //LOC no reservamos memoria en expr
+    //(void) free(expr);
     (void) free(path);
 
     /* If there was a problem, clean up and return error */
@@ -332,14 +335,15 @@ const char *expr;
 {
     while (*expr)
     {
-        if (*expr == '?')
+        // LOC: yo no utilizo '?'
+        /*if (*expr == '?')
         {
             if (*nam == '\0')
                 return 0;
 
             nam++, expr++;
         }
-        else if (*expr != '*')
+        else*/ if (*expr != '*')
         {
             if (*nam == *expr)
                 nam++, expr++;
@@ -348,15 +352,19 @@ const char *expr;
         }
         else
         {
+            // LOC: mis consultas siempre terminan con *
+            return 1;
             /* find out whether there is something behind the '*' */
             while (*expr == '*' || *expr == '?')
             {
+                //LOC: yo no utilizo '?'
+                /*
                 if (*expr == '?')
                 {
                     if (*nam == '\0')
                         return 0;
                     nam++;
-                }
+                }*/
 
                 expr++;
             }

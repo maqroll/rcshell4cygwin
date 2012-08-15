@@ -227,6 +227,13 @@ tty_setup()
     (void) memcpy((void *) &new_tty, (void *) &tty_settings_appli,
                   sizeof(struct termios));
 
+    new_tty.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
+    if (0 != tcsetattr(TTY_READFD, TCSANOW, &new_tty))
+    {
+        out_printf("tcgetattr(edit_mode) returned %s", strerror(errno));
+        return;
+    }
+    return;
     /*
      * Raw input, no echo and no int/quit/susp key/signal handling.
      */
@@ -241,7 +248,11 @@ tty_setup()
      * seems to convert CR even in raw mode, so disable it explicitly
      * after all.
      */
-    new_tty.c_iflag &= ~(BRKINT | INLCR | IGNCR | ICRNL | IXON);
+    new_tty.c_iflag &= ~(/*BRKINT |*/ INLCR | IGNCR | ICRNL | IXON);
+
+    new_tty.c_iflag &= (ONLCR);
+    new_tty.c_iflag &= BRKINT;
+    new_tty.c_iflag |= VINTR;
 
     /*
      * if we're using 8 bits, disable parity check and don't strip 8th bit
@@ -290,6 +301,7 @@ tty_setup()
      * I/O on the tty (as is done by the pthreads implementation), so always
      * force tty back to blocking I/O.
      */
+     /*
     {
         int tty_flags;
 
@@ -298,7 +310,7 @@ tty_setup()
             out_printf("warning: fcntl(F_GETFL) returned %s",
                                                 strerror(errno));
 
-        /* Turn non-blocking off if needed */
+        /* Turn non-blocking off if needed 
         if ( tty_flags & O_NONBLOCK )
         {
             tty_flags &= ~(O_NONBLOCK);
@@ -308,7 +320,7 @@ tty_setup()
                                                 strerror(errno));
         }
     }
-
+*/
     /*
      * Handle tty's special keys
      */
@@ -393,8 +405,10 @@ int       flg_wait;
             new_tty.c_cc[VMIN] = 0;
         }
 
+        /*
         if (0 != tcsetattr(TTY_READFD, TCSANOW, &new_tty))
             out_printf("tcgetattr(wait/timeout) returned %s", strerror(errno));
+            */
         timeout_mode = flg_wait;
     }
 
