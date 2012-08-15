@@ -1,0 +1,225 @@
+   $Id: README,v 1.18 2000/05/11 20:07:21 vons Exp $
+
+
+DESCRIPTION
+
+   This is version 1.3.3 of 'vrl', a library that allows
+   an application to read a line from the terminal, giving the user
+   additional editing capabilities like cursor movement, filename
+   completion and command history.
+
+   It is a kind of a lightweight version of the GNU readline library,
+   having the necessary functions but smaller and faster (like Rick Salz'
+   editline library). It has been developed to work with the rc-shell,
+   but may be useful for other things as well.
+
+   Compared to editline, vrl lacks a number of editing cmds (the ones
+   I never use :-), but adds the following:
+
+    - the cmdline will scroll if it is longer than the screen is wide.
+    - automatically lists all possible completions when given prefix
+      is ambiguous.
+    - history mgmnt has a no-dups mode (see manpage).
+    - A .vrlrc allows the user to configure the auto-complete,
+      history mgmnt, ... behavior.
+    - knows about terminal's home/end/insert/delete keys
+
+   For more information, see the vrl(1) manpage.
+
+   Check out http://vons.free.fr/tools/index.html for the latest version.
+
+COPYRIGHT
+
+   Vrl is copyright (C)1996-2000 by Gert-Jan Vons <gert-jan@bigfoot.com>.
+   You can re-use this code if you want, as long as you give me credit.
+
+
+BUILDING INSTRUCTIONS
+
+   Vrl has been written using ANSI-C, but will compile with older non-ANSI
+   compilers as well.
+
+   Vrl should work fine on most UNIX systems, it is regularly tested
+   on current FreeBSD, Linux, Solaris, and OpenBSD releases.
+
+   Compilation is simple: run the configure script and type make.
+
+	Gert-Jan
+
+E-MAIL
+	gert-jan@bigfoot.com
+
+DEBUGGING
+
+   Compiling with -DDEBUG will include assert()'s, verbose msgs, and some
+   additional debugging code.
+
+--------------------------------------------------------------------------
+KNOWN PROBLEMS
+
+- UnixWare 2.1.2 Terminal/xterm: first line of output of a started program
+  seems to miss characters (i.e. the first line of an 'ls' is not ok). This
+  is caused by a bug in their xterm which eats all space characters after
+  receiving the keypad disable code, up to and including the first non-space.
+  It works ok with TERM=xterm (the UnixWare xterm termcap entry no longer
+  has the ks/ke entries), but fails with TERM=vt100 or when using an rlogin
+  to another system (where xterm does have ks/ke).
+
+- QNX4's pterm: the termcap file lacks the entries for the End-key. Add
+  :@7=\E[Y: to "qansi" and :@7=\0377\0250 to "qnx" for this to work.
+--------------------------------------------------------------------------
+CURRENT VERSION: 1.3.3
+
+1.3.3  2000/05/11
+    - added support for QNX4 (fixes from sam@cogent.ca):
+	* "ar" does not take any options
+	* termcap.h doesn't declare the BC/PC/... variables.
+	* pterm termcap entries lack description of END key.
+
+1.3.2  1999/12/16
+    - bugfix: vrl started looping when write() returned EIO (happens when
+      tty disappears unexpectedly)
+
+1.3.1  1998/10/27
+    - bugfix: vrl dumped core when $HOME was not set on startup
+
+1.3  1998/10/20
+    - bugfix: a crashing pthread application under FreeBSD 2.2.6 leaves
+      the tty in non-blocking mode, resulting in EAGAIN on a read() in
+      vrl, which caused the shell to die. Vrl now forces the tty to back
+      to blocking I/O if needed.
+    - bugfix: although doc says 1024 bytes should do for a termcap buffer,
+      sometimes more is needed. Buffer size doubled.
+    - bugfix: ospeed could overflow for high tty speeds.
+    - added rltest.c to distrib.
+    - Improved comments.
+
+1.2  1998/07/20
+    - changed library name from readline.a to libvrl.a
+
+1.1  1998/02/15
+    - fixed (from <broman@nosc.mil>): RANLIB was not correctly defined
+      in Makefile.
+    - fixed/changed (from <broman@nosc.mil>): ^D is now bound to the
+      delete-char function, instead of acting like a return. A ^D on
+      an empty line indicates EOF, provided that the last char typed
+      just before was not a ^D.
+    - fixed: vrl leaked memory during a filename completion that didn't
+      match anything.
+    - fixed: manpage mentioned tilde-expansion, but that isn't implemented.
+    - added: ESC-? lists possible matches (like ESC-ESC)
+    - added: ESC-* now puts _all_ matches on the cmdline
+    - changed: "*.c[TAB]" will no longer match "config.cache", i.e. if
+      the (last part of) the expression already contains a wildcard, it
+      should match the whole filename and not just be a prefix of it.
+    - changed: timeout for multi-byte keys/commands increased from 0.5
+      to 1 second.
+ 
+1.0  1998/01/04
+    - changed: the backspace key was dead on ttys where it generated the
+      code '\177' (e.g. vt220). Was the consequence of having '\177' bound
+      to the delete-char function and thus not allowing it to be redefined,
+      causing the tty's backspace key to remain un-bound.  Removed this
+      association, delete-char function will be bound to tty's DEL key
+      (and ^D). However, some termcap entries lack the DEL key entry.
+      If it is missing, and \177 is not generated by another key, assume
+      there is a DEL key after all, and that it generates '\177'.
+    - configure: added lookup of lint program
+    - configure: also look at curses lib for termcap stuff
+    - configure: termcap var test now accesses variables, only linking
+      using tgoto() was not enough.
+
+0.92 1997/06/26
+    - bugfix: MIN()/MAX() macros conflicted with system includes.
+      Removed them, they were no longer used anyway.
+    - updated configure.in for autoconf 2.12.
+    - removed the BROKEN_TIOCGWINSZ test from configure.in, simply include
+      the TIOCGWINSZ if it exists on the system. If it doesn't work at
+      runtime, we'll deal with it then.
+    - EINVAL from TIOCGWINSZ is now ignored. It happens all the time
+      on a UnixWare console, where EINVAL means that the ioctl() is not
+      supported by the tty driver (it does work in a Terminal/xterm window
+      however).
+    - change: VWERASE, VREPRINT, and VLNEXT are not available on all Unix
+      systems (like SCO OpenServer, ...), they are now only included if
+      they exist.
+    - UnixWare cc doesn't like "cc -c foo.c -o foo.o"; removed all the 
+      "-o foo.o" from the makefile, hoping it doesn't break on other systems.
+
+0.91 1996/10/02
+    - bugfix: rc specifies a NULL-ptr when it doesn't want a prompt,
+      which caused a core-dump.
+
+0.9  1996/10/02
+    - bugfix: filename completion didn't work on dead symlinks (was bug
+      in wildexp()).
+
+0.8  1996/09/01
+    - Removed msg about setting tty size under solaris. Problem only
+      occurs when running Solaris 1.x binaries under Solaris 2.5, a
+      native Solaris 2.5 binary will fix the problem (looks like
+      a solaris bug though...)
+    - Fixed problem when the screen was incorrectly updated when
+      moving from a long to a short line in the cmd history.
+    - integrated update of wildexp(), corrects bug where a symlink
+      to a directory was treated as a file by the completion code,
+      i.e. a space was added to it instead of a DIRSEP.
+      
+
+0.7  1996/08/07
+    - fix: Under Solaris 2.5, the TIOCGWINSZ ioctl() apparently fails
+      if the tty width/height are not correctly set with stty ?!?!?
+      Anyway, vrl didn't handle this correctly, causing the shell to hang.
+    - fix: version display looked bad when it overwrote a long line/prompt,
+	   added a clr2eol()
+    - replaced glob() with wildexp()
+
+0.6  1996/05/22
+    - use STDOUT_FILENO for tty writes
+    - fix: error msgs no longer mess up the cmdline
+    - fix: errors when parsing .vrlrc were detected, but the msgs
+      were never generated
+    - fix: ESC-ESC and ESC-v were missing from manpage
+
+0.5  1996/05/20
+    - fix: cursor-key type-ahead failed on vt100
+    - fix: configure didn't test for memmove()
+    - ESC-v will display version
+    - lint fixes
+
+0.4  1996/05/17
+    - filename completion failed when curdir had only one file.
+    - after completion, cursor position was not optimal if there already
+      was a space after the expression.
+    - some error msgs lacked the trailing \n.
+    - added ^T (transpose chars).
+    - added ^O (re-read the $HOME/.vrlrc file).
+    - lot of improvements to screen update, prompt now stays in place.
+    - ospeed takes Bxxx, not the actual value.
+    - sigwinch was broken (include file was missing)
+    - stayed up too late, the pushback in sym.c requires a lifo, not a fifo.
+    - added ansicursorkeys option to enable type-ahead of cursor keys on
+      some terminals (xterm, vt100, ...).
+    - completed manpage
+
+0.3  1996/05/13
+    - tested on Sun, fixed number of lint-style warnings all over the place
+    - added CC=@CC@ and CFLAGS=@CFLAGS@ to Makefile.in. latter defaults
+      to -O if not set in env.
+    - cleaned up history search stuff
+    - configure tested for strerror(), but util.c didn't contain it
+    - added test for strstr() to configure, and the code to util.c
+
+0.2  1996/05/12
+    - added code behind rl_reset_terminal().
+    - SIGWINCH is now handled (and passed to the application just
+      before readline() returns).
+    - fixed some problems in the filename completion.
+    - started work on manpage.
+    - When completing or using word-delete, the word no longer
+      ends at the cursor.
+    - various other fixes.
+
+0.1  1996/05/10
+    - Initial revision. It works, doesn't crash, but the todo list
+      is still quite long...
