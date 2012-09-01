@@ -206,7 +206,7 @@ size_t    icurpos;
 
         str_grow(oline, oi + 4);  /* max bytes to add is 4 */
 
-        if (c <= 26)
+        if (c>0 && c <= 26)
         {
             oline->str[oi++] = '^';
             oline->str[oi++] = (char) ('A' + c - 1);

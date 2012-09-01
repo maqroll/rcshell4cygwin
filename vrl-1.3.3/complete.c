@@ -21,6 +21,169 @@ PROTOTYPE(static void comp_outstr, (const char *s));
 
 #define MAX(a,b)	((a) < (b) ? (b) : (a))
 
+/* Devuelve !cero si necesita procesamiento (añadir comillas o duplicarlas) y cero en caso contrario */
+/* Si necesita procesamiento el resultado es el número de caracteres adicionales que necesitamos */
+int necesita_procesamiento_in(char *cad)
+{
+    int comillas_presentes, i;
+    comillas_presentes = 0;
+
+    for(i=0; cad[i]; i++)
+    {
+        if(cad[i] == '\'')
+        {
+            comillas_presentes=1;    
+            break;
+        }
+    }
+
+    return comillas_presentes;
+}
+
+/* Devuelve !cero si necesita procesamiento (añadir comillas o duplicarlas) y cero en caso contrario */
+/* Si necesita procesamiento el resultado es el número de caracteres adicionales que necesitamos */
+int necesita_procesamiento_out(char *cad)
+{
+   int adicionales = 0;
+   int scape_region = 0;
+   int i = 0;
+    
+    for(i=0; cad[i]; i++)
+    {
+        if(!isspace(cad[i]) && cad[i] != '\'')
+        {
+            if(scape_region)
+            {
+                scape_region = 0;
+                adicionales++;
+            }
+        }
+        else if(isspace(cad[i]))
+        {
+            if(!scape_region)    
+            {
+                scape_region = 1;
+                adicionales++;
+            }
+        }
+        else if(cad[i] == '\'')
+        {
+            if(!scape_region)
+            {
+                scape_region = 1;
+                adicionales++;
+            }
+            adicionales++;
+        }
+    }
+
+    if(scape_region)
+    {
+        adicionales++;
+    }
+
+    return adicionales;
+}
+
+/* Devolvemos una copia procesada del argumento: la entrecomilla y duplica las comillas anteriores */
+/* No modificamos la cadena original */
+char *procesar_out(const int adicionales, const char *cad)
+{
+    char *resultado;
+    resultado = malloc(strlen(cad)+adicionales+1);
+
+    int i,pos,scape_region;
+    i = 0;
+    pos = 0; 
+    scape_region = 0;
+    
+    for(i=0; cad[i]; i++)
+    {
+        if(!isspace(cad[i]) && cad[i] != '\'')
+        {
+            if(scape_region)
+            {
+                resultado[pos++] = '\'';
+                scape_region = 0;
+            }
+            resultado[pos++] = cad[i];
+        }
+        else if(isspace(cad[i]))
+        {
+            if(!scape_region)    
+            {
+                scape_region = 1;
+                resultado[pos++] = '\'';
+            }
+            resultado[pos++] = cad[i];
+        }
+        else if(cad[i] == '\'')
+        {
+            if(!scape_region)
+            {
+                scape_region = 1;
+                resultado[pos++] = '\'';
+            }
+            resultado[pos++] = '\'';
+            resultado[pos++] = '\'';
+        }
+    }
+
+    if(scape_region)
+    {
+        resultado[pos++] = '\'';
+    }
+
+    resultado[pos++] = '\0';
+
+    return resultado;
+}
+
+/* Devolvemos el argumento prescindiendo de las comillas de principio y final y las comillas duplicadas. */
+char *procesar_in(char *cad)
+{
+    int i,pos,scape_region,pending_comilla;
+    i = 0;
+    pos = 0;
+    scape_region = 0;
+    pending_comilla = 0;
+    char *resultado;
+    resultado = malloc(strlen(cad)+1);
+
+    for(i=0; cad[i]; i++)
+    {
+        if(cad[i] != '\'')
+        {
+            resultado[pos++] = cad[i];
+            if(pending_comilla)
+            {
+                scape_region=0;
+                pending_comilla=0;
+            }
+            
+        }
+        else if(cad[i] == '\'')
+        {
+            if(!scape_region)
+                scape_region = 1;
+            else 
+            {
+                if(!pending_comilla)
+                    pending_comilla = 1;
+                else
+                {
+                    pending_comilla = 0;
+                    resultado[pos++] = '\'';
+                }
+                
+            }
+        }
+    }
+
+    resultado[pos] = '\0';
+
+    return resultado;
+}
 /*-------------------------------------------------------------------------
  * comp_complete -- implements filename completion. returns 1 if the
  *                  cmdline must be redrawn.
@@ -47,7 +210,7 @@ int       flag;
      * The filename may contain slashes, dots, etcetera, so extend the word
      * definition with those chars.
      */
-    expr_len = iline_curword_start(ILINE_CW_DONT_SKIP, "/\\-+.,~*?$");
+    expr_len = iline_curword_start(ILINE_CW_DONT_SKIP, "/\\-+.,~*?$'");
     expr_start = iline_getpos();
 
     /* +2, one for '*' and one for '\0' */
@@ -57,6 +220,19 @@ int       flag;
     (void) memcpy(glob_expr, &(linebuf[expr_start]), expr_len);
 
     glob_expr[expr_len] = '\0';
+
+    //out_str("_",1);
+    //out_str(glob_expr,strlen(glob_expr));
+    //out_str("_",1);
+    // LOC: tenemos que procesar glob_expr y actualizar expr_len
+    char *temp;
+    if(necesita_procesamiento_in(glob_expr))
+    {
+        temp = procesar_in(glob_expr);
+        free(glob_expr);
+        glob_expr = temp;
+        expr_len = strlen(glob_expr);
+    }
 
     /* Add trailing '*' if and only if the user didn't use wildcards in
      * the last part of the expression.
@@ -78,6 +254,12 @@ int       flag;
 	    (void) strcat (glob_expr, "*");
     }
 
+    //LOC: debugging
+    //out_str(glob_expr,strlen(glob_expr));
+    //out_str(".",1);
+    //out_str("ñ",2);
+    //out_flush();
+
     num_matches = do_glob(&we, glob_expr);
 
     /* Special case: user requested for all matches to be inserted
@@ -85,20 +267,35 @@ int       flag;
      */
     if (flag == COMP_INSERT_ALL && num_matches >= 1)
     {
+        /* LOC: entre-comillamos todas las que tengan espacios en blanco */
         (void) free(glob_expr);
 
-	/* move back to start of expr and replace it with first fname */
+        /* move back to start of expr and replace it with first fname */
         iline_start(expr_start);
+        int adicionales = 0;
+        if(adicionales = necesita_procesamiento_out(we.fname[0]))
+        {
+            char *entrecomillada;
+            entrecomillada = procesar_out(adicionales, we.fname[0]);
+            //free(we.fname[0]);
+            we.fname[0] = entrecomillada;
+        }
         iline_edit(0, expr_len, we.fname[0]);
 
-	/* insert all matches, separated by a space */
-	for(i = 1; i < we.cnt; i++)
-	{
-	    iline_edit(0, 0, " ");
-	    iline_edit(0, 0, we.fname[i]);
-	}
+        /* insert all matches, separated by a space */
+        for(i = 1; i < we.cnt; i++)
+        {
+            iline_edit(0, 0, " ");
+            if(adicionales = necesita_procesamiento_out(we.fname[i]))
+            {
+                char *entrecomillada = procesar_out(adicionales, we.fname[i]);
+                //free(we.fname[i]);
+                we.fname[i] = entrecomillada;
+            }
+            iline_edit(0, 0, we.fname[i]);
+        }
 
-	wildexp_free(&we);
+        wildexp_free(&we);
 
         return COMP_OK;
     }
@@ -106,7 +303,7 @@ int       flag;
     if (num_matches == 0)         /* no match at all... */
     {
         (void) free(glob_expr);
-	wildexp_free(&we);
+        wildexp_free(&we);
 
         iline_start(curpos);      /* restore cursor position */
         tty_beep();
@@ -199,14 +396,41 @@ int       flag;
     {
         /* replace expr on cmdline with new string */
         we.fname[0][com_prefix] = '\0';
+
+        /* LOC: aqui es donde tendriamos que hacer la modificacion */
+        /* Nos falta ademas tener en cuenta como se comportan las comillas en la entrada */
+
+        int adicionales = 0;
+        if (num_matches == 1)
+        {
+            if(adicionales = necesita_procesamiento_out(we.fname[0]))
+            {
+                //out_str(".",1);
+                char *entrecomillada;
+                entrecomillada = procesar_out(adicionales, we.fname[0]);
+                //free(we.fname[0]);
+                we.fname[0] = entrecomillada;
+            }
+        }
+
         iline_start(expr_start);
-        iline_edit(0, expr_len, (const char *) we.fname[0]);
+        if (num_matches != 1)
+        { /* otherwise estaria procesada */
+            if(adicionales = necesita_procesamiento_out(we.fname[0]))
+            {
+                //out_str(".",1);
+                char *entrecomillada;
+                entrecomillada = procesar_out(adicionales, we.fname[0]);
+                //free(we.fname[0]);
+                we.fname[0] = entrecomillada;
+            }
+        }
+        iline_edit(0, strlen(we.fname[0]), (const char *) we.fname[0]);
 
         if (num_matches != 1)
             tty_beep();           /* ambiguous, tell user */
         else
         {
-
             /*
              * If the result of the expansion is a file, add a space. If
              * it is a directory, the slash is already there.
@@ -214,15 +438,16 @@ int       flag;
              * However, this should only be done if there is no slash or
              * space on the line after the expr.
              */
-            if (we.fname[0][com_prefix - 1] != DIRSEP)
+            if (/*(adicionales && we.fname[0][strlen(we.fname[0]) - 2] != DIRSEP) ||
+                (!adicionales &&*/ we.fname[0][strlen(we.fname[0]) - 1] != DIRSEP)
             {
                 /* Add space if it isn't there yet. If it is, put the 
-		 * cursor after it.
-		 */
+                 * cursor after it.
+                 */
                 if (linebuf[iline_getpos()] != ' ')
                     iline_edit(0, 0, " ");
-		else
-		    iline_setpos(1);
+                else
+                    iline_setpos(1);
             }
             else
             {
@@ -231,11 +456,13 @@ int       flag;
                  * remove slash if there are two of them, and put cursor
                  * after the one that 'survives'.
                  */
+                 /*
                 if (linebuf[iline_getpos()] == DIRSEP)
                 {
                     iline_edit(0, 1, (const char *) NULL);
                     iline_setpos(1);
                 }
+                */
             }
         }
     }
@@ -502,3 +729,4 @@ const char *s;
     size_t    l = strlen(s);
     out_str(s, l);
 }
+

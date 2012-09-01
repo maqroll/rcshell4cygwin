@@ -204,26 +204,87 @@ const char *extra_word_chars;
 
 
 #define ISALNUM(c)	\
-	((isalnum(c) || c == '_' || strchr(extra_word_chars, c) != NULL))
+	((isalnum(c) || c == '_' || isspace(c) || strchr(extra_word_chars, c) != NULL))
 
     alnum =ISALNUM(c);
 
+    int scape_region = 0;
+    int pending_comilla = 0;
     /* word_end will point to last char of word */
+
+    if(c=='\'')
+        scape_region = 1;
 
     /* move forward as long as next char is in same class */
     word_end = curpos;
-    while ( !isspace((c = (Uchar)il[word_end+1]))
+    while ( !(isspace((c = (Uchar)il[word_end+1])) && !scape_region)
 			&& !(ISALNUM(c) ^ alnum) && c != '\0')
     {
-	word_end++;
+        word_end++;
+        if(c=='\'')
+        {
+            if(scape_region && !pending_comilla)
+                pending_comilla = 1;
+            else if(scape_region && pending_comilla)
+                pending_comilla = 0;    
+            else if(!scape_region)
+                scape_region = 1;    
+        } else if(scape_region && pending_comilla)
+        {
+            scape_region = 0;
+            pending_comilla = 0;
+        }
     }
 
 
     /* move as long as prev char is in same class, and not whitespace */
-    while( !isspace((c = (Uchar)il[curpos-1]))
+    while( !(isspace((c = (Uchar)il[curpos-1])) && !scape_region)
 	   		&& !(ISALNUM(c) ^ alnum) && curpos != 0)
     {
-	curpos--;
+        curpos--;
+        char luis = c;
+        char *p = &luis;
+        //out_str(p,1);
+        if(c=='\'')
+        {
+            if(pending_comilla)
+            {
+                scape_region=1;
+                pending_comilla=0;
+            }
+            else if(scape_region)
+            {
+                scape_region=0;
+                pending_comilla=1;
+            }
+            else
+            {
+                scape_region=1;
+            }
+        }
+        else
+        {
+            pending_comilla=0;
+        }
+        /*
+        if(c=='\'')
+        {
+            //out_str(".",1);
+            if(scape_region && !pending_comilla)
+                pending_comilla = 1;
+            else if(scape_region && pending_comilla)
+                pending_comilla = 0;    
+            else if(!scape_region)
+            {
+                scape_region = 1;    
+                //out_str("*",1);
+            }
+        } else if(scape_region && pending_comilla)
+        {
+            scape_region = 0;
+            pending_comilla = 0;
+        }
+        */
     }
 
     return (word_end - curpos + 1);
