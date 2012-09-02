@@ -1,3 +1,11 @@
+#ifndef __CYGWIN__
+#define __CYGWIN__ 1
+#endif
+
+#ifndef _POSIX_THREADS
+#define _POSIX_THREADS 1
+#endif
+
 /*
  * Lib9 is miscellany from the Plan 9 C library that doesn't
  * fit into libutf or into libfmt, but is still missing from traditional
@@ -401,7 +409,9 @@ extern	double	p9pow10(int);
 /* extern	void	qsort(void*, long, long, int (*)(void*, void*)); <stdlib.h> */
 extern	char*	searchpath(char*);
 /* extern	int	p9setjmp(p9jmp_buf); */
-#define p9setjmp(b)	sigsetjmp((void*)(b), 1)
+//inline int p9setjmp(p9jmp_buf buf);  
+#define p9setjmp(b)	sigsetjmp(b, 1)
+
 /*
  * <stdlib.h>
 extern	long	strtol(char*, char**, int);

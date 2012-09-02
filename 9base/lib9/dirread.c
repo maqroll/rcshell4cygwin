@@ -6,38 +6,49 @@
 
 extern int _p9dir(struct stat*, struct stat*, char*, Dir*, char**, char*);
 
-#if defined(__linux__) || defined(__FreeBSD_kernel__)
 static int
-mygetdents(int fd, struct dirent *buf, int n)
+mygetdents(int fd, struct dirent **buf, int n)
 {
-	off_t off;
-	int nn;
+    int result = 0;
+    struct dirent *p;
+    struct dirent *nbuf;
+    int reserved = 2056;
 
-	/* This doesn't match the man page, but it works in Debian with a 2.2 kernel */
-	off = p9seek(fd, 0, 1);
-	nn = getdirentries(fd, (void*)buf, n, &off);
-	return nn;
+	*buf = malloc(reserved);
+
+    if (*buf == nil)
+        return -1;
+
+    int fd2 = dup(fd);
+
+    if (fd2 < 0)
+        return -1;
+
+    DIR *dir = fdopendir(fd);
+    if (dir == nil)
+        return -1;
+
+    while ((p = readdir (dir))!=NULL /*&& result < n*/){
+        if(sizeof(struct dirent)*(result+1) > reserved)
+        {
+            nbuf = realloc(*buf,reserved+2056);
+            if(nbuf == nil)
+            {
+                closedir(dir);
+                return -1;
 }
-#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-static int
-mygetdents(int fd, struct dirent *buf, int n)
-{
-	long off;
-	return getdirentries(fd, (void*)buf, n, &off);
+            reserved += 2056;
+            *buf = nbuf;
 }
-#elif defined(__sun__) || defined(__NetBSD__)
-static int
-mygetdents(int fd, struct dirent *buf, int n)
-{
-	return getdents(fd, (void*)buf, n);
+        (*buf)[result] = *p;
+        result++;
 }
-#elif defined(__AIX__)
-static int
-mygetdents(int fd, struct dirent *buf, int n)
-{
-	return getdirent(fd, (void*)buf, n);
+
+    // Esto tambien cierra fd2
+    closedir (dir);
+
+    return result*sizeof(struct dirent);
 }
-#endif
 
 static int
 countde(char *p, int n)
@@ -50,14 +61,14 @@ countde(char *p, int n)
 	m = 0;
 	while(p < e){
 		de = (struct dirent*)p;
-		if(de->d_reclen <= 4+2+2+1 || p+de->d_reclen > e)
+		if(sizeof(struct dirent) <= 4+2+2+1 || p+sizeof(struct dirent) > e)
 			break;
 		if(de->d_name[0]=='.' && de->d_name[1]==0)
 			de->d_name[0] = 0;
 		else if(de->d_name[0]=='.' && de->d_name[1]=='.' && de->d_name[2]==0)
 			de->d_name[0] = 0;
 		m++;
-		p += de->d_reclen;
+		p += sizeof(struct dirent);
 	}
 	return m;
 }
@@ -97,7 +108,7 @@ dirpackage(int fd, char *buf, int n, Dir **dp)
 				stat(de->d_name, &st);
 			nstr += _p9dir(&lst, &st, de->d_name, nil, nil, nil);
 		}
-		p += de->d_reclen;
+		p += sizeof(struct dirent);
 	}
 
 	d = malloc(sizeof(Dir)*n+nstr);
@@ -119,7 +130,7 @@ dirpackage(int fd, char *buf, int n, Dir **dp)
 				stat(de->d_name, &st);
 			_p9dir(&lst, &st, de->d_name, &d[m++], &str, estr);
 		}
-		p += de->d_reclen;
+		p += sizeof(struct dirent);
 	}
 
 	fchdir(oldwd);
@@ -140,14 +151,20 @@ dirread(int fd, Dir **dp)
 	if(fstat(fd, &st) < 0)
 		return -1;
 
-	if(st.st_blksize < 8192)
-		st.st_blksize = 8192;
+    // TODO
+	//if(st.st_blksize < 8192)
+		//st.st_blksize = 8192;
+
+    /*
+	if(st.st_blksize < 30000)
+		st.st_blksize = 30000;
 
 	buf = malloc(st.st_blksize);
 	if(buf == nil)
 		return -1;
+    */
 
-	n = mygetdents(fd, (void*)buf, st.st_blksize);
+	n = mygetdents(fd, (void*)(&buf), st.st_blksize);
 	if(n < 0){
 		free(buf);
 		return -1;
