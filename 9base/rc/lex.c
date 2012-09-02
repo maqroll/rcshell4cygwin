@@ -66,8 +66,19 @@ getnext(void)
 		return EOF;
 	if(doprompt)
 		pprompt();
+    /* VRL*/
+    if((runq->cmdfile!=NULL)&&(strcmp(runq->cmdfile,"/dev/stdin") == 0))    
+        c = vrl_rchr(runq->cmdfd);
+    else
+	/**/
 	c = rchr(runq->cmdfd);
+    //fprint(1,">%c<",c);    
 	if(!inquote && c=='\\'){
+		/* VRL*/
+        if(strcmp(runq->cmdfile,"/dev/stdin") == 0)    
+            c = vrl_rchr(runq->cmdfd);
+        else
+/**/
 		c = rchr(runq->cmdfd);
 		if(c=='\n' && !incomm){		/* don't continue a comment */
 			doprompt = 1;

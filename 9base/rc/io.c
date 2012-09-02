@@ -66,6 +66,50 @@ pchr(io *b, int c)
 }
 
 int
+vrl_rchr(io *b)
+{
+    /*
+    si no hay nada en el buffer intermedio->lectura bloqueante del buffer
+    si tenemos algo en el buffer->devolvemos el caracter y avanzamos
+    */
+    int c;
+
+    /* lectura del terminal */
+    if(vrl_buffer_read == nil)
+    {
+        vrl_buffer = vrl_buffer_read = readline(prompt);
+        //fprint(1,"[%s]\n",vrl_buffer);
+        // Ctrl+D a veces devuelve un puntero nulo
+        if((vrl_buffer != nil) && (*vrl_buffer != EOF))
+        {
+            add_history(vrl_buffer);
+        }
+    }
+
+    if(vrl_buffer_read == nil)
+        return EOF;
+
+    /* lectura del buffer */
+    c = *vrl_buffer_read++ & 0xFF;
+
+    if(c==0)
+    {
+        c = '\n';
+        free(vrl_buffer);
+        vrl_buffer = vrl_buffer_read = nil;
+    }
+
+    //fprint(1,">%c<",c);
+    return c;
+        
+    //si no hay nada devuelve EOF.
+    //porque es bloqueante.
+	//if(b->bufp==b->ebuf)
+		//return emptybuf(b);
+	//return *b->bufp++ & 0xFF;
+}
+
+int
 rchr(io *b)
 {
 	if(b->bufp==b->ebuf)

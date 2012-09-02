@@ -12,6 +12,9 @@ struct io{
 };
 io *err;
 io *openfd(int), *openstr(void), *opencore(char *, int);
+static char *vrl_buffer = nil;
+static char *vrl_buffer_read = nil;
+static char *prompt = ";";
 int emptybuf(io*);
 void pchr(io*, int);
 int rchr(io*);
@@ -28,3 +31,6 @@ void pcmd(io*, tree*);
 void pval(io*, word*);
 void pfnc(io*, thread*);
 void pfmt(io*, char*, ...);
+extern char  *readline(char *);
+extern void  add_history(char *);
+extern int rl_reset_terminal(char *);
