@@ -8,6 +8,10 @@ OFILES    = code.o exec.o getflags.o glob.o here.o io.o lex.o \
 YFILES    = syn.y
 MANFILES  = rc.1
 
+CFLAGS += -g
+
+CC = gcc-3
+
 include ../config.mk
 
 # Solaris
@@ -50,4 +54,4 @@ clean:
 
 ${TARG}: ${OFILES}
 	@echo LD ${TARG}
-	@${CC} ${LDFLAGS} -o ${TARG} ${OFILES} -lm -L${PREFIX}/lib -L../lib9 -l9
+	@${CC} ${LDFLAGS} -o ${TARG} ${OFILES} -lm -L${PREFIX}/lib -L../lib9 -L. -l9 -lvrl -lncurses
