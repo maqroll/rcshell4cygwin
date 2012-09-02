@@ -104,7 +104,7 @@ searchpath(char *w)
 /*	|| strncmp(w, "#", 1)==0 */
 	|| strncmp(w, "./", 2)==0
 	|| strncmp(w, "../", 3)==0
-	|| (path = vlook("path")->val)==0)
+	|| (path = vlook("path9")->val)==0)
 		path=&nullpath;
 	return path;
 }

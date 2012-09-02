@@ -101,7 +101,7 @@ bigpath(var *v)
 	word **l, *w;
 
 	if(v->val == nil){
-		_setvar("path", nil, 0);
+		_setvar("path9", nil, 0);
 		return;
 	}
 	p = v->val->word;
@@ -124,7 +124,7 @@ bigpath(var *v)
 		}else
 			p = nil;
 	}
-	_setvar("path", w, 0);
+	_setvar("path9", w, 0);
 }
 
 char*
@@ -170,4 +170,5 @@ pathinit(void)
 	v = gvlook("PATH");
 	v->changefn = bigpath;
 	bigpath(v);
+    
 }
