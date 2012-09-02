@@ -3,6 +3,8 @@
 
 TARG      = yacc
 
+CC = gcc-3
+
 include ../std.mk
 
 pre-uninstall:
