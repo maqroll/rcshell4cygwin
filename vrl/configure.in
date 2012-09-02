@@ -1,0 +1,355 @@
+dnl
+dnl $Id: configure.in,v 1.9 2000/05/11 20:00:13 vons Exp $
+dnl
+dnl Configure.in for vrl 1.3.3
+
+AC_REVISION($Revision: 1.9 $)dnl
+AC_INIT(vrl.c)
+AC_CONFIG_HEADER(config.h)
+
+# Use -O, but only if CFLAGS is not yet defined in env.
+CFLAGS=${CFLAGS-"-O"}
+
+AC_PROG_CC
+AC_PROG_CPP
+AC_PATH_PROG(RM, rm, true)
+AC_PATH_PROG(AR, ar, true)
+AC_PATH_PROG(RANLIB, ranlib, true)
+AC_CHECK_PROGS(LINT, lint alint xlint, true)  
+
+dnl check if this compiler knows about prototypes. Some accept them,
+dnl (OSF/1, ...) but don't define __STDC__ by default.
+dnl
+AC_MSG_CHECKING([for working prototypes])
+AC_CACHE_VAL(ac_cv_have_prototypes,
+  AC_TRY_COMPILE(
+	[],
+	[
+	extern int protofunc(int a, int b);
+
+	return protofunc(1,2);
+	],
+	ac_cv_have_prototypes=yes,
+  	ac_cv_have_prototypes=no
+  )
+)
+if test "$ac_cv_have_prototypes" = "yes" ; then
+  AC_DEFINE(HAVE_PROTOTYPES)
+fi
+AC_MSG_RESULT($ac_cv_have_prototypes)
+
+
+dnl find out whether the termcap functions are found in -ltermcap,
+dnl -ltermlib, or -lcurses. Abort if they all fail.
+dnl
+AC_CHECK_LIB(termlib, tgetent, [],
+    AC_CHECK_LIB(termcap, tgetent, [],
+        AC_CHECK_LIB(curses, tgetent, [],
+	    AC_MSG_ERROR([can't find library that contains termcap functions])
+	)
+    )
+)
+
+
+dnl find out if PC, UP, BC are defined in the termlib/termcap
+dnl XXX: are there really systems that don't have these ?
+dnl
+AC_MSG_CHECKING([if PC, UP and BC variables are defined somewhere])
+AC_CACHE_VAL(ac_cv_have_termcap_vars,
+  AC_TRY_LINK(
+  [],
+  [
+    extern char *tgoto ();
+    extern char *BC;
+    char *cm;
+    BC = "x";
+    (void) tgoto (cm, 1, 1);
+  ],
+  ac_cv_have_termcap_vars="yes",
+  ac_cv_have_termcap_vars="no"
+  )
+)
+if test "$ac_cv_have_termcap_vars" = "yes"
+then
+    AC_DEFINE(HAVE_TERMCAP_VARS, 1)
+fi
+AC_MSG_RESULT($ac_cv_have_termcap_vars)
+
+AC_CHECK_HEADERS(termcap.h)
+
+dnl If we have a termcap.h, it doesn't mean that the variables are actually
+dnl declared in there (e.g. QNX4).
+dnl
+if test "$ac_cv_header_termcap_h" = "yes"
+then
+    AC_MSG_CHECKING([if termcap.h actually declares the PC, UP and BC variables])
+
+    AC_CACHE_VAL(ac_cv_have_termcap_defns,
+      AC_TRY_COMPILE(
+      [
+       #include <termcap.h>
+      ],
+      [
+	char *cm;
+	BC = "x";
+	(void) tgoto (cm, 1, 1);
+      ],
+      ac_cv_have_termcap_defns="yes",
+      ac_cv_have_termcap_defns="no"
+      )
+    )
+    if test "$ac_cv_have_termcap_defns" = "yes"
+    then
+	AC_DEFINE(HAVE_TERMCAP_DEFNS, 1)
+    fi
+    AC_MSG_RESULT($ac_cv_have_termcap_defns)
+fi
+
+AC_CHECK_HEADERS(fcntl.h)
+AC_CHECK_HEADERS(limits.h)
+AC_CHECK_HEADERS(pwd.h)
+AC_CHECK_HEADERS(stdarg.h)
+AC_CHECK_HEADERS(stdlib.h)
+AC_CHECK_HEADERS(string.h)
+AC_CHECK_HEADERS(termios.h)
+AC_CHECK_HEADERS(unistd.h)
+AC_CHECK_HEADERS(sys/ioctl.h)
+AC_CHECK_HEADERS(sys/stat.h)
+AC_CHECK_HEADERS(sys/types.h)
+
+
+dnl Try strings.h if string.h is not there
+dnl
+if test "$ac_cv_header_string_h" != "yes"
+then
+    AC_CHECK_HEADERS(strings.h)
+fi
+
+
+dnl Check for memory.h if memcpy() is not defined in string.h.
+dnl Assume the presence of string.h means that memcpy is in there.
+dnl
+if test "$ac_cv_header_string_h" != "yes"
+then
+    AC_MSG_CHECKING([if memory.h is needed for memcpy()])
+    AC_CACHE_VAL(ac_cv_need_memory_h,
+      AC_EGREP_HEADER(memcpy, memory.h,
+	ac_cv_need_memory_h="no",
+	ac_cv_need_memory_h="yes"
+      )
+    )
+    if test "$ac_cv_need_memory_h" = "yes"
+    then
+      AC_DEFINE(NEED_MEMORY_H, 1)
+    fi
+    AC_MSG_RESULT($ac_cv_need_memory_h)
+fi
+
+
+dnl Check for malloc.h if malloc() is not defined in stdlib.h.
+dnl Assume the presence of stdlib.h means that malloc is in there.
+dnl
+if test "$ac_cv_header_stdlib_h" != "yes"
+then
+    AC_MSG_CHECKING([if malloc.h is needed for malloc()])
+    AC_CACHE_VAL(ac_cv_need_malloc_h,
+      AC_EGREP_HEADER(malloc, malloc.h,
+	ac_cv_need_malloc_h="yes",
+	ac_cv_need_malloc_h="no"
+      )
+    )
+    if test "$ac_cv_need_malloc_h" = "yes"
+    then
+      AC_DEFINE(NEED_MALLOC_H, 1)
+    fi
+    AC_MSG_RESULT($ac_cv_need_malloc_h)
+fi
+
+
+dnl find out how to scan directories. This will define HAVE_DIRENT_H,
+dnl HAVE_SYS_NDIR_H, HAVE_SYS_DIR_H, or HAVE_NDIR_H.
+dnl
+AC_HEADER_DIRENT()
+
+AC_C_CONST
+AC_TYPE_SIGNAL
+
+dnl check for volatile keyword
+dnl
+AC_MSG_CHECKING([for volatile keyword])
+AC_CACHE_VAL(ac_cv_type_volatile, 
+  AC_TRY_COMPILE(
+  [],
+  [
+    volatile int i
+  ], 
+  ac_cv_type_volatile="yes", 
+  ac_cv_type_volatile="no"
+  )
+)
+if test "$ac_cv_type_volatile" != "yes"
+then
+  AC_DEFINE(VOLATILE,[])
+fi
+AC_MSG_RESULT($ac_cv_type_volatile)
+
+
+dnl AC_TYPE_SIZE_T only checks sys/types.h, it can be found in stdlib.h too.
+dnl
+AC_CHECK_TYPE(size_t, unsigned)
+
+dnl See if ssize_t is defined somewhere. AC_CHECK_TYPE() only checks
+dnl stdlib.h and sys/types.h, it should be in unistd.h...
+dnl
+AC_MSG_CHECKING([for ssize_t])
+AC_CACHE_VAL(ac_cv_ssize_t,
+    AC_TRY_COMPILE(
+	[
+#include <unistd.h>
+#include <sys/types.h>
+	]
+    ,
+	[ ssize_t a; ]
+    ,
+	ac_cv_ssize_t=yes
+    ,
+	ac_cv_ssize_t=no
+    )
+)
+
+if test "$ac_cv_ssize_t" = "no" ; then
+    AC_DEFINE(ssize_t, int)
+fi
+AC_MSG_RESULT($ac_cv_ssize_t)
+
+
+
+dnl Some systems (like FreeBSD 1.x) define all the _PC_xxx constants but
+dnl not the pathconf() function itself, so test it here.
+dnl
+AC_CHECK_FUNCS(pathconf)
+AC_CHECK_FUNCS(vsnprintf)
+
+dnl Some old systems don't have strerror(), strstr(), memmove(), ...
+AC_CHECK_FUNCS(strerror)
+AC_CHECK_FUNCS(strstr)
+AC_CHECK_FUNCS(memmove)
+
+
+dnl The alarm signal should force the read() to return EINTR. Installing
+dnl the handler with sigaction() allows us to configure it that way.
+dnl If there is no sigaction(), we can only hope that signal() will have
+dnl the right semantics...
+dnl
+AC_CHECK_FUNCS(sigaction)
+
+
+
+dnl Can't just check for the existance of stdarg.h, since some systems
+dnl (eg HP-UX) have stdarg.h, but the compilation fails when you use it.
+dnl
+if test "$ac_cv_header_stdarg_h" = "yes"
+then
+    AC_MSG_CHECKING(whether stdarg.h actually works)
+    AC_CACHE_VAL(ac_cv_working_stdarg,
+	AC_TRY_LINK(
+	    [
+#include<stdarg.h>
+	    ]
+	,
+	    [ /* end of func */ }
+	      int f(int a, ...)
+	      {
+		  va_list p;
+		  int i;
+		  va_start(p,a);
+		  i = va_arg(p,int);
+		  va_end(p);
+		  return i;
+		  /* no end, the '}' will be there ... */
+	    ]
+	, ac_cv_working_stdarg=yes
+	, ac_cv_working_stdarg=no
+	)
+    )
+
+    if test "$ac_cv_working_stdarg" = "yes" ; then
+	AC_DEFINE(HAVE_WORKING_STDARG)
+    fi
+    AC_MSG_RESULT($ac_cv_working_stdarg)
+fi
+
+
+dnl check if TIOCGWINSZ is defined, and if it is if there is a working
+dnl ioctl() to get the window size.
+dnl
+AC_MSG_CHECKING([for TIOCGWINSZ])
+AC_CACHE_VAL(ac_cv_have_tiocgwinsz,
+  AC_TRY_LINK(
+  [
+#ifdef HAVE_TERMIOS_H
+#include <termios.h>
+#endif
+#include <sys/ioctl.h>
+  ],
+  [
+      struct winsize size;
+      (void) ioctl (0, TIOCGWINSZ, (char *) &size);
+  ],
+    ac_cv_have_tiocgwinsz="yes",
+    ac_cv_have_tiocgwinsz="no",
+    :
+  )
+)
+if test "$ac_cv_have_tiocgwinsz" = "yes"
+then
+    AC_DEFINE(HAVE_TIOCGWINSZ, 1)
+fi
+AC_MSG_RESULT($ac_cv_have_tiocgwinsz)
+
+
+dnl check for sig_atomic_t, define it as int if unknown
+dnl
+AC_MSG_CHECKING([for sig_atomic_t])
+AC_CACHE_VAL(ac_cv_type_sig_atomic_t, 
+  AC_TRY_COMPILE(
+  [
+#include <signal.h>
+  ], 
+  [
+    sig_atomic_t s
+  ], 
+  ac_cv_type_sig_atomic_t="yes", 
+  ac_cv_type_sig_atomic_t="no"
+  )
+)
+if test "$ac_cv_type_sig_atomic_t" = "no"
+then
+  AC_MSG_RESULT([no, using int])
+  AC_DEFINE(SIG_ATOMIC_T, int)
+else
+  AC_MSG_RESULT(yes)
+fi
+
+dnl Use default ARFLAGS, only set them when the variable is not predefined
+dnl
+AC_MSG_CHECKING([if \$ARFLAGS is defined])
+
+cat >conftest.mk <<E_O_F
+a:
+	test X\$(ARFLAGS) = X
+E_O_F
+
+
+if make -f conftest.mk > /dev/null 2>&1 ; then
+    MYARFLAGS=rc
+    AC_MSG_RESULT(no)
+else
+    MYARFLAGS='$(ARFLAGS)'
+    AC_MSG_RESULT(yes)
+fi
+AC_SUBST(MYARFLAGS)
+rm conftest.mk
+
+dnl
+AC_OUTPUT(Makefile)
