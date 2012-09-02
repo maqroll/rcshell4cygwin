@@ -50,7 +50,7 @@ Xasync(void)
 			 */
 			signal(SIGTTIN, SIG_IGN);
 			signal(SIGTTOU, SIG_IGN);
-			ioctl(tty, TIOCNOTTY);
+			//ioctl(tty, TIOCNOTTY); /* LOC */
 			close(tty);
 		}
 		if(isatty(0))
