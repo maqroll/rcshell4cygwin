@@ -5,6 +5,9 @@ include ../config.mk
 LIB=lib9.a
 TARG=lib9
 
+CFLAGS += -g
+//CC = gcc-3
+
 # following objects are not compiled for several reasons
 #	crypt.o
 #	netcrypt.o
